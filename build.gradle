@@ -106,11 +106,13 @@ tasks.register('echoUtilityJar', Jar) {
 
     from sourceSets.main.output
     from sourceSets.test.output
+    from 'src/test/echoUtility'
     from {
         configurations.testRuntimeClasspath
             .findAll { it.name.endsWith('.jar') }
             .collect { zipTree(it) }
     }
+    exclude '**/logback-test.xml'
     exclude 'META-INF/*.RSA', 'META-INF/*.SF', 'META-INF/*.DSA'
 }
 
