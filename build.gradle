@@ -84,6 +84,14 @@ tasks.named('test') {
     useJUnitPlatform()
 }
 
+tasks.register('runEchoUtility', JavaExec) {
+    group = 'verification'
+    description = 'Runs the standalone two-argument echo utility.'
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'com.prosilion.subdivisions.util.EchoUtility'
+    standardInput = System.in
+}
+
 test {
 //    filter {
 //        excludeTestsMatching("*IT");
