@@ -1,6 +1,7 @@
 package com.prosilion.subdivisions.util;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.prosilion.nostr.NostrException;
 import com.prosilion.nostr.codec.BaseMessageDecoder;
 import com.prosilion.nostr.enums.Command;
@@ -19,6 +20,8 @@ import org.assertj.core.util.Strings;
  * java -jar build/libs/echo-utility.jar
  */
 public final class EchoUtility {
+  private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+
   private final String wsPrefix = "ws://";
   private final String urlTemplate = Strings.concat(
      wsPrefix, "localhost:%s");
@@ -32,7 +35,7 @@ public final class EchoUtility {
     Scanner scanner = new Scanner(System.in);
 
     System.out.print("Enter JSON request argument: ");
-    String inputJson = scanner.nextLine().replaceAll("\\s", "");
+    String inputJson = readJson(scanner);
 
     System.out.print("Enter port (or full URL for non ws://localhost:<port_number> format) argument: ");
     String inputUrl = scanner.nextLine();
@@ -52,5 +55,60 @@ public final class EchoUtility {
 
 //    System.out.println(inputJson);
 //    System.out.println(inputUrl);
+  }
+
+  private String readJson(Scanner scanner) throws JsonProcessingException {
+    StringBuilder inputJson = new StringBuilder();
+
+    while (scanner.hasNextLine()) {
+      if (!inputJson.isEmpty()) {
+        inputJson.append('\n');
+      }
+      inputJson.append(scanner.nextLine());
+
+      if (isCompleteJson(inputJson)) {
+        OBJECT_MAPPER.readTree(inputJson.toString());
+        return inputJson.toString();
+      }
+    }
+
+    throw new NostrException(inputJson.isEmpty() ? "empty JSON request" : "incomplete JSON request");
+  }
+
+  private boolean isCompleteJson(CharSequence json) {
+    int depth = 0;
+    boolean escaped = false;
+    boolean inString = false;
+    boolean started = false;
+
+    for (int i = 0; i < json.length(); i++) {
+      char current = json.charAt(i);
+      if (inString) {
+        if (escaped) {
+          escaped = false;
+        } else if (current == '\\') {
+          escaped = true;
+        } else if (current == '"') {
+          inString = false;
+        }
+        continue;
+      }
+
+      if (current == '"') {
+        inString = true;
+      } else if (current == '[' || current == '{') {
+        started = true;
+        depth++;
+      } else if (current == ']' || current == '}') {
+        depth--;
+        if (depth <= 0) {
+          return true;
+        }
+      } else if (!started && !Character.isWhitespace(current)) {
+        return true;
+      }
+    }
+
+    return false;
   }
 }
