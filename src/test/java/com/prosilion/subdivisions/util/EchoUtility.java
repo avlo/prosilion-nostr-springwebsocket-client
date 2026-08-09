@@ -42,24 +42,17 @@ public final class EchoUtility {
     System.out.print("Enter port (or full URL for non ws://localhost:<port_number> format) argument: ");
     String inputUrl = scanner.nextLine();
 
-    String composedUrl = inputUrl.contains("localhost") ?
-       String.format(wsPrefix, inputUrl) : String.format(urlTemplate, inputUrl);
+    String composedUrl = !parseNumeric(inputUrl) ? String.format(wsPrefix, inputUrl) : String.format(urlTemplate, inputUrl);
 
-    BaseMessage reqMessage = BaseMessageDecoder.decode(inputJson);
-    if (!Command.REQ.equals(reqMessage.getCommand())) {
+    BaseMessage baseMessage = BaseMessageDecoder.decode(inputJson);
+    if (!Command.REQ.equals(baseMessage.getCommand())) {
       throw new NostrException("not a REQ");
     }
 
-    BaseMessage decode = ReqMessage.decode(Util.generateRandomHex64String(), inputJson);
+    ReqMessage uniqSubscriberIdReqMessage = new ReqMessage(Util.generateRandomHex64String(), ((ReqMessage) baseMessage).filtersList());
+    System.out.printf("sending JSON:\n  %s\n\nto URL\n  %s%n%n", uniqSubscriberIdReqMessage.encode(), composedUrl);
+    List<BaseMessage> baseMessages = nostrSingleRequestService.send(uniqSubscriberIdReqMessage, composedUrl);
 
-    System.out.println("inputs:");
-    System.out.println("  ".concat(decode.encode()));
-    System.out.println("  ".concat(composedUrl));
-    System.out.println();
-
-    System.out.printf("sending JSON:\n  %s\n\nto URL\n  %s%n%n", decode.encode(), composedUrl);
-
-    List<BaseMessage> baseMessages = nostrSingleRequestService.send((ReqMessage) reqMessage, composedUrl);
     List<EventIF> eventIFs = getEventIFs(baseMessages);
     System.out.println(eventIFs.stream().map(EventIF::createPrettyPrintJson).collect(Collectors.joining(",\n")));
   }
@@ -125,5 +118,14 @@ public final class EchoUtility {
        .map(EventMessage.class::cast)
        .map(EventMessage::getEvent)
        .toList();
+  }
+
+  public boolean parseNumeric(String strNum) {
+    try {
+      double d = Double.parseDouble(strNum);
+    } catch (NumberFormatException nfe) {
+      return false;
+    }
+    return true;
   }
 }
