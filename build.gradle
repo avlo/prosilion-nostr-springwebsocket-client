@@ -92,6 +92,28 @@ tasks.register('runEchoUtility', JavaExec) {
     standardInput = System.in
 }
 
+tasks.register('echoUtilityJar', Jar) {
+    group = 'build'
+    description = 'Builds the standalone executable echo utility.'
+    dependsOn testClasses
+    archiveFileName = 'echo-utility.jar'
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    zip64 = true
+
+    manifest {
+        attributes 'Main-Class': 'com.prosilion.subdivisions.util.EchoUtility'
+    }
+
+    from sourceSets.main.output
+    from sourceSets.test.output
+    from {
+        configurations.testRuntimeClasspath
+            .findAll { it.name.endsWith('.jar') }
+            .collect { zipTree(it) }
+    }
+    exclude 'META-INF/*.RSA', 'META-INF/*.SF', 'META-INF/*.DSA'
+}
+
 test {
 //    filter {
 //        excludeTestsMatching("*IT");
