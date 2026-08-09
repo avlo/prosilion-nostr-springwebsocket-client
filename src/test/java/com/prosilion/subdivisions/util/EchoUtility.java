@@ -5,12 +5,15 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.prosilion.nostr.NostrException;
 import com.prosilion.nostr.codec.BaseMessageDecoder;
 import com.prosilion.nostr.enums.Command;
+import com.prosilion.nostr.event.EventIF;
 import com.prosilion.nostr.message.BaseMessage;
+import com.prosilion.nostr.message.EventMessage;
 import com.prosilion.nostr.message.ReqMessage;
 import com.prosilion.nostr.util.Util;
 import com.prosilion.subdivisions.client.reactive.NostrSingleRequestService;
+import java.util.List;
 import java.util.Scanner;
-import org.assertj.core.util.Strings;
+import java.util.stream.Collectors;
 
 /**
  * compile standalone utility
@@ -22,9 +25,8 @@ import org.assertj.core.util.Strings;
 public final class EchoUtility {
   private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
-  private final String wsPrefix = "ws://";
-  private final String urlTemplate = Strings.concat(
-     wsPrefix, "localhost:%s");
+  private final String wsPrefix = "ws://%s";
+  private final String urlTemplate = String.format(wsPrefix, "localhost:%s");
   private final NostrSingleRequestService nostrSingleRequestService = new NostrSingleRequestService();
 
   public static void main(String[] args) throws JsonProcessingException {
@@ -40,7 +42,8 @@ public final class EchoUtility {
     System.out.print("Enter port (or full URL for non ws://localhost:<port_number> format) argument: ");
     String inputUrl = scanner.nextLine();
 
-    String composedUrl = inputUrl.contains("localhost") ? wsPrefix.concat(inputUrl) : urlTemplate.concat(inputUrl);
+    String composedUrl = inputUrl.contains("localhost") ?
+       String.format(wsPrefix, inputUrl) : String.format(urlTemplate, inputUrl);
 
     BaseMessage reqMessage = BaseMessageDecoder.decode(inputJson);
     if (!Command.REQ.equals(reqMessage.getCommand())) {
@@ -49,12 +52,16 @@ public final class EchoUtility {
 
     BaseMessage decode = ReqMessage.decode(Util.generateRandomHex64String(), inputJson);
 
-    System.out.println(decode.encode());
-    System.out.println(composedUrl);
-//    List<BaseMessage> baseMessages = nostrSingleRequestService.send((ReqMessage) reqMessage, composedUrl);
+    System.out.println("inputs:");
+    System.out.println("  ".concat(decode.encode()));
+    System.out.println("  ".concat(composedUrl));
+    System.out.println();
 
-//    System.out.println(inputJson);
-//    System.out.println(inputUrl);
+    System.out.printf("sending JSON:\n  %s\n\nto URL\n  %s%n%n", decode.encode(), composedUrl);
+
+    List<BaseMessage> baseMessages = nostrSingleRequestService.send((ReqMessage) reqMessage, composedUrl);
+    List<EventIF> eventIFs = getEventIFs(baseMessages);
+    System.out.println(eventIFs.stream().map(EventIF::createPrettyPrintJson).collect(Collectors.joining(",\n")));
   }
 
   private String readJson(Scanner scanner) throws JsonProcessingException {
@@ -110,5 +117,13 @@ public final class EchoUtility {
     }
 
     return false;
+  }
+
+  public static List<EventIF> getEventIFs(List<BaseMessage> returnedBaseMessages) {
+    return returnedBaseMessages.stream()
+       .filter(EventMessage.class::isInstance)
+       .map(EventMessage.class::cast)
+       .map(EventMessage::getEvent)
+       .toList();
   }
 }
