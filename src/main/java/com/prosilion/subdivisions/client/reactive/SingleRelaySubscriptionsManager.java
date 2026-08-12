@@ -26,11 +26,12 @@ public class SingleRelaySubscriptionsManager {
   private SslBundles sslBundles;
 
   SingleRelaySubscriptionsManager(@NonNull String relayUrl) {
+    log.debug("Ctor called with relay url: [{}]", relayUrl);
     this.relayUrl = relayUrl;
   }
 
   SingleRelaySubscriptionsManager(@NonNull String relayUrl, @NonNull SslBundles sslBundles) {
-    log.debug("{} constructor called with relay url:  [{}], sslBundles [{}]", getClass().getSimpleName(), relayUrl, sslBundles);
+    log.debug("Ctor called with relay url:  [{}], sslBundles [{}]", relayUrl, sslBundles);
     this.relayUrl = relayUrl;
     this.sslBundles = sslBundles;
     final SslBundle server = sslBundles.getBundle("server");
@@ -41,6 +42,7 @@ public class SingleRelaySubscriptionsManager {
 
   public void send(@NonNull ReqMessage reqMessage, @NonNull BaseSubscriber<BaseMessage> subscriber) {
     log.debug("... send(@NonNull ReqMessage reqMessage, @NonNull BaseSubscriber<BaseMessage> subscriber ... ");
+    log.debug("subscriber: [{}]\nreqMessage:\n{}", subscriber, reqMessage);
     Flux<String> requestResults = getRequestResults(reqMessage);
     log.debug("... received Flux<String> requestResults = getRequestResults(reqMessage) ... ");
     Flux<BaseMessage> baseMessageFlux = baseMessagesReturnedByReqMessageFlatMap(requestResults);
@@ -57,16 +59,16 @@ public class SingleRelaySubscriptionsManager {
   private Flux<BaseMessage> baseMessagesReturnedByReqMessage(@NonNull Flux<String> reqMessageFlux) {
     log.debug("... (1of3) Flux<BaseMessage> baseMessagesReturnedByReqMessage(@NonNull Flux<String> reqMessageFlux) ... ");
     Flux<BaseMessage> filter = reqMessageFlux
-        .map(msg -> {
-          try {
-            BaseMessage decode = BaseMessageDecoder.decode(msg);
-            log.debug("... (2of3) Flux<BaseMessage> baseMessagesReturnedByReqMessage(@NonNull Flux<String> reqMessageFlux) ... ");
-            return decode;
-          } catch (JsonProcessingException e) {
-            throw new NostrException(String.format("%s flux bad not good", getClass().getSimpleName()), e);
-          }
-        })
-        .filter(Objects::nonNull);
+       .map(msg -> {
+         try {
+           BaseMessage decode = BaseMessageDecoder.decode(msg);
+           log.debug("... (2of3) Flux<BaseMessage> baseMessagesReturnedByReqMessage(@NonNull Flux<String> reqMessageFlux) ... ");
+           return decode;
+         } catch (JsonProcessingException e) {
+           throw new NostrException(String.format("%s flux bad not good", getClass().getSimpleName()), e);
+         }
+       })
+       .filter(Objects::nonNull);
     log.debug("... (3of3) Flux<BaseMessage> baseMessagesReturnedByReqMessage(@NonNull Flux<String> reqMessageFlux) ... ");
     return filter;
   }
@@ -87,8 +89,8 @@ public class SingleRelaySubscriptionsManager {
 
   private WebSocketClient getReactiveWebSocketClient() {
     return Objects.isNull(sslBundles) ?
-        new WebSocketClient(relayUrl) :
-        new WebSocketClient(relayUrl, sslBundles);
+       new WebSocketClient(relayUrl) :
+       new WebSocketClient(relayUrl, sslBundles);
   }
 
   public void closeSession(@NonNull String... subscriberIds) {

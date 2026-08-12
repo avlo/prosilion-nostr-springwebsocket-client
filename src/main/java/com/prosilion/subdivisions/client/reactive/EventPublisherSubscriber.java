@@ -30,8 +30,7 @@ class EventPublisherSubscriber {
   }
 
   <T extends OkMessage> void send(@NonNull EventMessage eventMessage, @NonNull BaseSubscriber<T> subscriber) {
-    log.debug("{} send(eventMessage, subscriber) [{}] content:\n{}",
-        getClass().getSimpleName(),
+    log.debug("send(eventMessage, subscriber) [{}] content:\n{}",
         subscriber,
         eventMessage.getEvent().createPrettyPrintJson());
     getFlux(eventMessage, subscriber);
